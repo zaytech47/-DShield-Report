@@ -234,19 +234,32 @@
     .stat-grid { grid-template-columns: repeat(2, 1fr); border-radius: 10px; }
   }
 
-  /* ---------- Certifications ---------- */
-  .cert-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+  /* ---------- Certifications marquee ---------- */
+  .cert-marquee {
+    position: relative;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+    mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  }
+  .cert-track {
+    display: flex;
     gap: 14px;
+    width: max-content;
+    animation: cert-scroll 36s linear infinite;
   }
-  @media (max-width: 880px) {
-    .cert-grid { grid-template-columns: repeat(2, 1fr); }
+  .cert-marquee:hover .cert-track {
+    animation-play-state: paused;
   }
-  @media (max-width: 480px) {
-    .cert-grid { grid-template-columns: 1fr; }
+  @keyframes cert-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cert-track { animation: none; }
   }
   .cert-card {
+    flex: 0 0 auto;
+    width: 240px;
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -540,7 +553,9 @@
       <h2 class="section-title">GIAC Certifications</h2>
       <p class="section-desc">Eight GIAC certifications spanning forensics, detection, incident response, and offensive security.</p>
     </div>
-    <div class="cert-grid" id="cert-grid"></div>
+    <div class="cert-marquee">
+      <div class="cert-track" id="cert-track"></div>
+    </div>
   </div>
 </section>
 
@@ -625,15 +640,17 @@ let STATS = null;
 let activeCountry = null; // null = all
 
 function renderCerts(certs) {
-  const el = document.getElementById("cert-grid");
+  const el = document.getElementById("cert-track");
   if (!certs || !certs.length) { el.innerHTML = ""; return; }
-  el.innerHTML = certs.map(c => `
+  const cards = certs.map(c => `
     <div class="cert-card">
       <div class="cert-badge">${c.acronym}</div>
       <div class="cert-acronym">${c.acronym}</div>
       <div class="cert-name">${c.name}</div>
     </div>
   `).join("");
+  // duplicate the full set so translateX(-50%) loops seamlessly
+  el.innerHTML = cards + cards;
 }
 
 function renderTopStats(d) {
