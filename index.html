@@ -245,17 +245,7 @@
     display: flex;
     gap: 14px;
     width: max-content;
-    animation: cert-scroll 36s linear infinite;
-  }
-  .cert-marquee:hover .cert-track {
-    animation-play-state: paused;
-  }
-  @keyframes cert-scroll {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .cert-track { animation: none; }
+    will-change: transform;
   }
   .cert-card {
     flex: 0 0 auto;
@@ -411,7 +401,30 @@
     color: var(--ink-faint);
     margin-bottom: 18px;
   }
-  #timeline-chart { width: 100%; height: 200px; display: block; }
+  #timeline-chart { width: 100%; height: 200px; display: block; cursor: crosshair; }
+  .chart-wrap { position: relative; }
+  .chart-tooltip {
+    position: absolute;
+    top: 0;
+    transform: translate(-50%, -100%);
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+    z-index: 5;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  }
+  .chart-tooltip.visible { opacity: 1; }
+  .chart-tooltip .tt-date { color: var(--ink-faint); font-size: 11px; margin-bottom: 2px; }
+  .chart-tooltip .tt-count { color: var(--accent); font-weight: 700; }
 
   .two-col {
     display: grid;
@@ -535,7 +548,7 @@
     <div class="eyebrow"><span class="pulse"></span>SENSOR ONLINE</div>
     <h1>Security research,<br><span class="dim">built and broken in public.</span></h1>
     <p class="hero-sub">
-      I&rsquo;I'm Xavier Smith; I run a self-hosted honeypot and SIEM on my home
+      I&rsquo;m ZayTech &mdash; I run a self-hosted honeypot and SIEM on my home
       network to study real-world attacker behavior, and write up what I find.
       This page tracks that sensor live and lists the credentials behind the work.
     </p>
@@ -591,7 +604,10 @@
     <div class="two-col">
       <div class="panel">
         <div class="panel-title">Events over time &middot; 3h buckets, last 7d</div>
-        <canvas id="timeline-chart"></canvas>
+        <div class="chart-wrap">
+          <canvas id="timeline-chart"></canvas>
+          <div class="chart-tooltip" id="chart-tooltip"></div>
+        </div>
       </div>
       <div class="panel">
         <div class="panel-title">Most-targeted ports, 30d</div>
@@ -649,8 +665,44 @@ function renderCerts(certs) {
       <div class="cert-name">${c.name}</div>
     </div>
   `).join("");
-  // duplicate the full set so translateX(-50%) loops seamlessly
+  // duplicate the full set so we can loop the scroll seamlessly
   el.innerHTML = cards + cards;
+}
+
+function startCertMarquee() {
+  const track = document.getElementById("cert-track");
+  const wrap = track.closest(".cert-marquee");
+  if (!track || !wrap) return;
+
+  const reduceMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let offset = 0;
+  let paused = false;
+  const speed = 0.45; // px per frame, ~27px/sec at 60fps
+
+  wrap.addEventListener("mouseenter", () => { paused = true; });
+  wrap.addEventListener("mouseleave", () => { paused = false; });
+
+  function step() {
+    // half the scrollWidth = width of one full (non-duplicated) set
+    const halfWidth = track.scrollWidth / 2;
+    if (halfWidth > 0) {
+      if (!paused) {
+        offset += speed;
+        if (offset >= halfWidth) offset -= halfWidth;
+        track.style.transform = "translateX(" + (-offset) + "px)";
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  if (reduceMotion) {
+    track.style.transform = "translateX(0px)";
+    return;
+  }
+
+  requestAnimationFrame(step);
 }
 
 function renderTopStats(d) {
@@ -739,16 +791,19 @@ function renderPorts(d) {
   ).join("");
 }
 
-function renderTimeline(d) {
-  const canvas = document.getElementById("timeline-chart");
-  const ctx = canvas.getContext("2d");
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  canvas.width = w * dpr; canvas.height = h * dpr;
-  ctx.scale(dpr, dpr);
+let TIMELINE_POINTS = []; // [{x, y, time, count}] in CSS pixels, for hit-testing
+
+function formatTimelineLabel(isoTime) {
+  const dt = new Date(isoTime);
+  if (isNaN(dt.getTime())) return isoTime;
+  return dt.toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+  });
+}
+
+function drawTimelineBase(ctx, w, h, points) {
   ctx.clearRect(0, 0, w, h);
 
-  const points = (d && d.activity_timeline_7d) || [];
   if (!points.length) {
     ctx.fillStyle = "#5b6472";
     ctx.font = "13px monospace";
@@ -794,6 +849,94 @@ function renderTimeline(d) {
   ctx.strokeStyle = "#4ecbf5";
   ctx.lineWidth = 1.75;
   ctx.stroke();
+
+  // record point positions (in CSS px) for hover hit-testing
+  TIMELINE_POINTS = points.map((p, i) => ({
+    x: padL + i * stepX,
+    y: padT + (1 - p.count / max) * plotH,
+    time: p.time,
+    count: p.count
+  }));
+}
+
+function renderTimeline(d) {
+  const canvas = document.getElementById("timeline-chart");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const points = (d && d.activity_timeline_7d) || [];
+  drawTimelineBase(ctx, w, h, points);
+
+  canvas.__w = w;
+  canvas.__h = h;
+  canvas.__dpr = dpr;
+}
+
+function setupTimelineHover() {
+  const canvas = document.getElementById("timeline-chart");
+  const tooltip = document.getElementById("chart-tooltip");
+  if (!canvas || !tooltip) return;
+
+  function nearestPoint(mouseX) {
+    if (!TIMELINE_POINTS.length) return null;
+    let best = TIMELINE_POINTS[0];
+    let bestDist = Math.abs(best.x - mouseX);
+    for (const p of TIMELINE_POINTS) {
+      const dist = Math.abs(p.x - mouseX);
+      if (dist < bestDist) { best = p; bestDist = dist; }
+    }
+    return best;
+  }
+
+  function redrawWithCrosshair(point) {
+    const ctx = canvas.getContext("2d");
+    const w = canvas.__w || canvas.clientWidth;
+    const h = canvas.__h || canvas.clientHeight;
+    const dpr = canvas.__dpr || (window.devicePixelRatio || 1);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawTimelineBase(ctx, w, h, (STATS && STATS.activity_timeline_7d) || []);
+
+    if (point) {
+      ctx.beginPath();
+      ctx.moveTo(point.x, 6);
+      ctx.lineTo(point.x, h - 4);
+      ctx.strokeStyle = "rgba(78,203,245,0.35)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = "#4ecbf5";
+      ctx.fill();
+      ctx.strokeStyle = "#0a0c10";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  canvas.addEventListener("mousemove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const point = nearestPoint(mouseX);
+    if (!point) return;
+
+    redrawWithCrosshair(point);
+
+    tooltip.innerHTML =
+      '<div class="tt-date">' + formatTimelineLabel(point.time) + '</div>' +
+      '<div class="tt-count">' + fmtNum(point.count) + ' events</div>';
+    tooltip.style.left = point.x + "px";
+    tooltip.style.top = Math.max(point.y - 10, 0) + "px";
+    tooltip.classList.add("visible");
+  });
+
+  canvas.addEventListener("mouseleave", () => {
+    tooltip.classList.remove("visible");
+    redrawWithCrosshair(null);
+  });
 }
 
 function renderObservations(list) {
@@ -841,11 +984,13 @@ async function init() {
   STATS = stats;
 
   renderCerts(certs);
+  startCertMarquee();
   renderTopStats(stats);
   renderCountryBar(stats);
   renderMitre(stats, null);
   renderPorts(stats);
   renderTimeline(stats);
+  setupTimelineHover();
   renderObservations(observations);
 
   window.addEventListener("resize", () => renderTimeline(stats));
