@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-06-20T01:00:00Z",
+  "sensor_uptime": "4 days",
+  "total_events_30d": 168500,
+  "unique_ips_30d": 5815,
+  "top_countries": [
+    {"country": "Bulgaria", "count": 12554},
+    {"country": "Hong Kong", "count": 7833},
+    {"country": "Russia", "count": 7757},
+    {"country": "Singapore", "count": 6720},
+    {"country": "France", "count": 5739},
+    {"country": "Canada", "count": 5739},
+    {"country": "Poland", "count": 5738},
+    {"country": "United States", "count": 5142}
+  ],
+  "activity_timeline_7d": [
+    {"time": "2026-06-13T00:00:00Z", "count": 820},
+    {"time": "2026-06-13T03:00:00Z", "count": 1410},
+    {"time": "2026-06-13T06:00:00Z", "count": 3120},
+    {"time": "2026-06-13T09:00:00Z", "count": 2870},
+    {"time": "2026-06-13T12:00:00Z", "count": 1640},
+    {"time": "2026-06-13T15:00:00Z", "count": 980},
+    {"time": "2026-06-13T18:00:00Z", "count": 1220},
+    {"time": "2026-06-13T21:00:00Z", "count": 1740},
+    {"time": "2026-06-14T00:00:00Z", "count": 2390},
+    {"time": "2026-06-14T03:00:00Z", "count": 3450},
+    {"time": "2026-06-14T06:00:00Z", "count": 1980},
+    {"time": "2026-06-14T09:00:00Z", "count": 1120}
+  ],
+  "log_type_split": [
+    {"type": "honeypot", "count": 118400},
+    {"type": "iptables", "count": 50100}
+  ],
+  "top_ports": [
+    {"port": 22, "count": 64200},
+    {"port": 23, "count": 41300},
+    {"port": 80, "count": 28700},
+    {"port": 443, "count": 19600},
+    {"port": 2222, "count": 8900},
+    {"port": 8080, "count": 5800}
+  ]
+}
