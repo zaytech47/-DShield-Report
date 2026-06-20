@@ -1,119 +1,125 @@
-# Honeypot Watch &mdash; Public Dashboard
+# ZayTech &mdash; Public Security Site
 
-A static, public-safe dashboard showing aggregate stats from a self-hosted
-DShield honeypot, plus a running log of written attack observations.
+A single-page, public-safe site combining:
+- Your GIAC certifications
+- Live(ish) aggregate stats from your self-hosted DShield honeypot
+- A country filter that cross-references MITRE ATT&CK techniques
+- Your written Attack Observation log
 
-**Nothing in this repo ever talks to your home network live.** The two
-JSON files in `data/` are the entire interface between your real
-Elasticsearch/SIEM and this public page. You regenerate them on a schedule
-and push the updated files &mdash; the page itself just reads static JSON.
+Same security model as before: **nothing here ever talks to your home
+network live.** The JSON files in `data/` are the entire interface. You
+regenerate them on a schedule (or edit by hand) and push the updated files;
+the page itself only ever reads static JSON over HTTPS.
 
-## What's in here
+## Files
 
 ```
-index.html                   the whole dashboard (HTML/CSS/JS, no build step)
-data/honeypot_stats.json     aggregate stats, regenerated nightly
+index.html                   the whole site (HTML/CSS/JS, no build step)
+data/certifications.json     your GIAC cert list
+data/honeypot_stats.json     aggregate stats + per-country MITRE breakdown
 data/observations.json       your written Attack Observation entries
-export_dashboard_data.sh     runs ON THE SIEM VM, writes honeypot_stats.json
+export_dashboard_data.sh     runs ON THE SIEM VM, regenerates honeypot_stats.json
 ```
 
-## 1. Put this on GitHub Pages
+## Publishing on GitHub Pages
 
-1. On github.com, click **New repository**. Name it whatever you like
-   (e.g. `honeypot-watch`). Public repo, no need for a README/license yet
-   since this folder already has one.
-2. On your own machine (or the SIEM VM), initialize and push this folder:
-   ```bash
-   cd honeypot-dashboard
-   git init
-   git add .
-   git commit -m "Initial dashboard"
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/honeypot-watch.git
-   git push -u origin main
-   ```
-3. In the GitHub repo, go to **Settings &rarr; Pages**.
-4. Under **Source**, choose **Deploy from a branch**.
-5. Set branch to **main**, folder to **/ (root)**, click **Save**.
-6. GitHub gives you a URL like `https://<your-username>.github.io/honeypot-watch/`
-   within a minute or two. That's it &mdash; it's live and public.
+Same steps as before if you've already got the `honeypot-watch` repo &mdash;
+just replace its contents with this folder's files (or make a new repo, your
+call).
 
-## 2. Keep the data fresh
+1. **github.com → New repository** → public, no starter README.
+2. **Add file → Upload files**, drag in `index.html`.
+3. **Add file → Upload files**, drag in the `data/` folder (or create each
+   file individually with **Add file → Create new file**, typing the path
+   like `data/certifications.json` to auto-create the folder).
+4. Repo **Settings → Pages → Source: Deploy from a branch → main → / (root)
+   → Save**.
+5. Wait ~1 minute, refresh that same Pages screen for your live URL.
 
-`export_dashboard_data.sh` is meant to run **on the SIEM VM**, where it has
-local access to Elasticsearch. It writes a single sanitized JSON file with
-only aggregate counts &mdash; no raw logs, no internal IPs, nothing that
-identifies your home network.
+## Updating your certifications
 
-Edit the credentials at the top of the script if needed, then test it:
-```bash
-chmod +x export_dashboard_data.sh
-./export_dashboard_data.sh
-cat ~/dashboard-data/honeypot_stats.json
+Edit `data/certifications.json`. Each entry:
+```json
+{ "acronym": "GXYZ", "name": "Full Certification Name", "domain": "category" }
+```
+`domain` isn&rsquo;t shown on the page yet but is there if you want to group/filter
+by category later.
+
+## Updating the honeypot stats + MITRE mapping
+
+`honeypot_stats.json`'s `countries` array is what drives both the country
+filter buttons and the MITRE ATT&CK panel. Each country needs:
+
+```json
+{
+  "country": "Bulgaria",
+  "code": "BG",
+  "count": 12554,
+  "unique_ips": 412,
+  "techniques": [
+    { "id": "T1110", "name": "Brute Force", "count": 9800 }
+  ]
+}
 ```
 
-### Getting the file from the SIEM VM into the GitHub repo
+**Important caveat on the MITRE mapping:** Cowrie/iptables logs don&rsquo;t
+natively tag events with ATT&CK technique IDs. The included
+`export_dashboard_data.sh` ships with a **placeholder heuristic** (it splits
+each country's traffic into Brute Force / Active Scanning / Exploit
+Public-Facing Application by a fixed percentage) so the page has something
+real to show immediately. For genuinely accurate per-technique counts,
+you'd want to extend your Logstash pipeline with a `translate` filter that
+maps specific Cowrie event types (e.g. `cowrie.login.failed` &rarr; T1110,
+`cowrie.session.file_download` &rarr; T1105) to ATT&CK IDs, then aggregate
+on that field instead of guessing. Until then, feel free to hand-edit the
+`techniques` arrays directly with your own judgment as you analyze sessions
+for each Attack Observation &mdash; that's arguably more honest than an
+automated guess anyway.
 
-The simplest approach: a small cron job on the SIEM VM that regenerates the
-file, then a second step that copies it into a local clone of the repo and
-pushes. For example, set up a one-time SSH key/deploy key for the repo, clone
-it onto the SIEM VM once:
+## Updating Attack Observations
 
-```bash
-git clone https://github.com/<your-username>/honeypot-watch.git ~/honeypot-watch
-```
-
-Then a wrapper script:
-```bash
-#!/bin/bash
-~/export_dashboard_data.sh
-cp ~/dashboard-data/honeypot_stats.json ~/honeypot-watch/data/honeypot_stats.json
-cd ~/honeypot-watch
-git add data/honeypot_stats.json
-git commit -m "nightly stats refresh" --allow-empty-message -q
-git push -q
-```
-
-Add that wrapper to a nightly cron job:
-```bash
-crontab -e
-```
-```
-0 2 * * * /home/zaytech/nightly_dashboard_push.sh >> /home/zaytech/dashboard_push.log 2>&1
-```
-
-GitHub Pages automatically redeploys within a minute or two of any push to
-`main`, so the public page updates itself every night with no manual work
-after this is set up once.
-
-## 3. Adding new Attack Observations
-
-Edit `data/observations.json` and add a new object to the **top** of the
-array (newest first):
-
+Same as before &mdash; edit `data/observations.json`, add new entries to the
+**top** of the array:
 ```json
 {
   "title": "Short descriptive title",
   "date": "Month Day, Year",
   "tags": ["tag-one", "tag-two"],
-  "body": [
-    "First paragraph.",
-    "Second paragraph.",
-    "As many paragraphs as you want \u2014 each string in this array becomes its own paragraph."
-  ]
+  "body": ["Paragraph one.", "Paragraph two."]
 }
 ```
 
-Commit and push that file (from the repo on your own machine, or however
-you prefer) and the public log updates immediately.
+## Keeping data fresh automatically
 
-## Notes on what's intentionally left out
+See the original automation approach: clone the repo onto your SIEM VM,
+have a nightly cron job run `export_dashboard_data.sh`, copy its output into
+the cloned repo's `data/honeypot_stats.json`, then `git commit && git push`.
+GitHub Pages redeploys within a minute or two of any push.
 
-- No login-protected admin view, no link back to the real Kibana, no
-  internal IPs or hostnames anywhere in this repo or its data files.
-- The export script only ever runs `_count` and `_search` aggregation
-  queries against Elasticsearch &mdash; it never touches raw documents,
-  session content, or system indices.
-- If you ever want to stop publishing, deleting the repo or disabling
-  Pages in Settings takes the page down immediately; nothing else needs
-  to change on the SIEM side.
+```bash
+git clone https://github.com/<you>/<repo>.git ~/zaytech-site
+```
+```bash
+#!/bin/bash
+~/export_dashboard_data.sh
+cp ~/dashboard-data/honeypot_stats.json ~/zaytech-site/data/honeypot_stats.json
+cd ~/zaytech-site
+git add data/honeypot_stats.json
+git commit -m "nightly stats refresh" -q
+git push -q
+```
+```bash
+crontab -e
+```
+```
+0 2 * * * /home/zaytech/nightly_push.sh >> /home/zaytech/push.log 2>&1
+```
+
+## What's intentionally left out
+
+- No real GIAC badge artwork is embedded &mdash; those images are SANS/GIAC's
+  copyrighted property hosted on their own site. The acronym-tile design
+  here is original and doesn't reproduce their graphics.
+- No raw session logs, internal IPs, or hostnames anywhere in this repo.
+- The export script only runs `_count`/aggregation queries against
+  Elasticsearch, never raw documents or system indices.
