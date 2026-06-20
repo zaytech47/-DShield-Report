@@ -1,0 +1,10 @@
+[
+  {"acronym": "GCFA", "name": "GIAC Certified Forensics Analyst", "domain": "forensics"},
+  {"acronym": "GPEN", "name": "GIAC Certified Penetration Tester", "domain": "offensive"},
+  {"acronym": "GCIA", "name": "GIAC Certified Intrusion Analyst", "domain": "detection"},
+  {"acronym": "GPYC", "name": "GIAC Python Coder", "domain": "engineering"},
+  {"acronym": "GCIH", "name": "GIAC Certified Incident Handler", "domain": "response"},
+  {"acronym": "GSEC", "name": "GIAC Security Essentials", "domain": "foundations"},
+  {"acronym": "GISF", "name": "GIAC Information Security Fundamentals", "domain": "foundations"},
+  {"acronym": "GFACT", "name": "GIAC Foundational Cybersecurity Technologies", "domain": "foundations"}
+]

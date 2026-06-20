@@ -3,16 +3,6 @@
   "sensor_uptime": "4 days",
   "total_events_30d": 168500,
   "unique_ips_30d": 5815,
-  "top_countries": [
-    {"country": "Bulgaria", "count": 12554},
-    {"country": "Hong Kong", "count": 7833},
-    {"country": "Russia", "count": 7757},
-    {"country": "Singapore", "count": 6720},
-    {"country": "France", "count": 5739},
-    {"country": "Canada", "count": 5739},
-    {"country": "Poland", "count": 5738},
-    {"country": "United States", "count": 5142}
-  ],
   "activity_timeline_7d": [
     {"time": "2026-06-13T00:00:00Z", "count": 820},
     {"time": "2026-06-13T03:00:00Z", "count": 1410},
@@ -27,10 +17,6 @@
     {"time": "2026-06-14T06:00:00Z", "count": 1980},
     {"time": "2026-06-14T09:00:00Z", "count": 1120}
   ],
-  "log_type_split": [
-    {"type": "honeypot", "count": 118400},
-    {"type": "iptables", "count": 50100}
-  ],
   "top_ports": [
     {"port": 22, "count": 64200},
     {"port": 23, "count": 41300},
@@ -38,5 +24,109 @@
     {"port": 443, "count": 19600},
     {"port": 2222, "count": 8900},
     {"port": 8080, "count": 5800}
+  ],
+  "countries": [
+    {
+      "country": "Bulgaria",
+      "code": "BG",
+      "count": 12554,
+      "unique_ips": 412,
+      "techniques": [
+        {"id": "T1110", "name": "Brute Force", "count": 9800},
+        {"id": "T1078", "name": "Valid Accounts", "count": 1900},
+        {"id": "T1059", "name": "Command and Scripting Interpreter", "count": 854}
+      ]
+    },
+    {
+      "country": "Hong Kong",
+      "code": "HK",
+      "count": 7833,
+      "unique_ips": 268,
+      "techniques": [
+        {"id": "T1190", "name": "Exploit Public-Facing Application", "count": 5200},
+        {"id": "T1595", "name": "Active Scanning", "count": 2633}
+      ]
+    },
+    {
+      "country": "Russia",
+      "code": "RU",
+      "count": 7757,
+      "unique_ips": 301,
+      "techniques": [
+        {"id": "T1110", "name": "Brute Force", "count": 5100},
+        {"id": "T1071", "name": "Application Layer Protocol", "count": 1657},
+        {"id": "T1105", "name": "Ingress Tool Transfer", "count": 1000}
+      ]
+    },
+    {
+      "country": "Singapore",
+      "code": "SG",
+      "count": 6720,
+      "unique_ips": 220,
+      "techniques": [
+        {"id": "T1595", "name": "Active Scanning", "count": 4500},
+        {"id": "T1190", "name": "Exploit Public-Facing Application", "count": 2220}
+      ]
+    },
+    {
+      "country": "France",
+      "code": "FR",
+      "count": 5739,
+      "unique_ips": 198,
+      "techniques": [
+        {"id": "T1110", "name": "Brute Force", "count": 4100},
+        {"id": "T1078", "name": "Valid Accounts", "count": 1639}
+      ]
+    },
+    {
+      "country": "Canada",
+      "code": "CA",
+      "count": 5739,
+      "unique_ips": 184,
+      "techniques": [
+        {"id": "T1595", "name": "Active Scanning", "count": 3300},
+        {"id": "T1059", "name": "Command and Scripting Interpreter", "count": 2439}
+      ]
+    },
+    {
+      "country": "Poland",
+      "code": "PL",
+      "count": 5738,
+      "unique_ips": 176,
+      "techniques": [
+        {"id": "T1110", "name": "Brute Force", "count": 4800},
+        {"id": "T1105", "name": "Ingress Tool Transfer", "count": 938}
+      ]
+    },
+    {
+      "country": "United States",
+      "code": "US",
+      "count": 5142,
+      "unique_ips": 401,
+      "techniques": [
+        {"id": "T1595", "name": "Active Scanning", "count": 2900},
+        {"id": "T1190", "name": "Exploit Public-Facing Application", "count": 2242}
+      ]
+    },
+    {
+      "country": "United Kingdom",
+      "code": "GB",
+      "count": 4325,
+      "unique_ips": 152,
+      "techniques": [
+        {"id": "T1110", "name": "Brute Force", "count": 3100},
+        {"id": "T1078", "name": "Valid Accounts", "count": 1225}
+      ]
+    },
+    {
+      "country": "Germany",
+      "code": "DE",
+      "count": 4108,
+      "unique_ips": 165,
+      "techniques": [
+        {"id": "T1595", "name": "Active Scanning", "count": 2400},
+        {"id": "T1071", "name": "Application Layer Protocol", "count": 1708}
+      ]
+    }
   ]
 }
