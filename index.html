@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sensor Log &mdash; Honeypot Watch</title>
+<style>
+  :root {
+    --bg: #11161c;
+    --bg-panel: #161d25;
+    --bg-panel-raised: #1b232c;
+    --hairline: #2a333d;
+    --ink: #d8dee5;
+    --ink-dim: #8a96a3;
+    --ink-faint: #5c6773;
+    --amber: #e8a23a;
+    --green: #5fa88a;
+    --blue: #5b8fc7;
+    --red: #c4604a;
+    --mono: "IBM Plex Mono", "SF Mono", "Consolas", monospace;
+    --sans: "Inter", -apple-system, "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ---------- Ticker ---------- */
+  .ticker-wrap {
+    background: #0c0f13;
+    border-bottom: 1px solid var(--hairline);
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 9px 0;
+    position: relative;
+  }
+  .ticker-wrap::before {
+    content: "LIVE FEED";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    background: #0c0f13;
+    padding: 0 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--green);
+    z-index: 2;
+    border-right: 1px solid var(--hairline);
+  }
+  .ticker-track {
+    display: inline-flex;
+    padding-left: 130px;
+    animation: scroll-left 48s linear infinite;
+  }
+  .ticker-track span {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-dim);
+    margin-right: 40px;
+  }
+  .ticker-track span b { color: var(--amber); font-weight: 600; }
+  @keyframes scroll-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track { animation: none; }
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 24px 36px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .eyebrow .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 8px;
+    box-shadow: 0 0 8px var(--green);
+  }
+  h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.08;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+  }
+  h1 .accent { color: var(--amber); }
+  .subhead {
+    font-size: 16px;
+    color: var(--ink-dim);
+    max-width: 620px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  .meta-row {
+    margin-top: 24px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  /* ---------- Stat strip ---------- */
+  .stat-strip {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--hairline);
+    border: 1px solid var(--hairline);
+  }
+  .stat {
+    background: var(--bg-panel);
+    padding: 24px 22px;
+  }
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.green { color: var(--green); }
+
+  @media (max-width: 720px) {
+    .stat-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---------- Section shell ---------- */
+  section {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 64px 24px;
+  }
+  section + section {
+    border-top: 1px solid var(--hairline);
+  }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin: 0;
+  }
+  .section-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 880px) {
+    .panel-grid { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--hairline);
+    padding: 22px 22px 20px;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 18px;
+  }
+
+  /* chart canvas */
+  #timeline-chart { width: 100%; height: 220px; display: block; }
+
+  /* country bars */
+  .bar-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 48px;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-bottom: 11px;
+  }
+  .bar-row .country { color: var(--ink-dim); }
+  .bar-track {
+    height: 9px;
+    background: #0c0f13;
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--amber));
+  }
+  .bar-row .count { text-align: right; color: var(--ink-faint); }
+
+  /* ports list */
+  .port-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .port-pill {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: #0c0f13;
+    border: 1px solid var(--hairline);
+    color: var(--ink-dim);
+    padding: 6px 10px;
+    border-radius: 2px;
+  }
+  .port-pill b { color: var(--amber); }
+
+  /* ---------- Observation log ---------- */
+  .log-entry {
+    border: 1px solid var(--hairline);
+    background: var(--bg-panel);
+    margin-bottom: 16px;
+  }
+  .log-entry-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--hairline);
+    cursor: pointer;
+  }
+  @media (max-width: 560px) {
+    .log-entry-head {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      grid-template-areas:
+        "idx date chev"
+        "title title title";
+      row-gap: 8px;
+      align-items: center;
+    }
+    .log-index { grid-area: idx; }
+    .log-entry-date { grid-area: date; text-align: right; }
+    .chevron { grid-area: chev; }
+    .log-entry-title { grid-area: title; }
+  }
+  .log-index {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    background: var(--bg-panel-raised);
+    border: 1px solid var(--hairline);
+    padding: 3px 8px;
+    border-radius: 2px;
+  }
+  .log-entry-title {
+    font-weight: 600;
+    font-size: 15.5px;
+    flex: 1;
+  }
+  .log-entry-date {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .log-entry-body {
+    padding: 18px 20px 20px;
+    font-size: 14.5px;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    display: none;
+  }
+  .log-entry.open .log-entry-body { display: block; }
+  .log-entry-body p { margin: 0 0 12px; }
+  .log-entry-body p:last-child { margin-bottom: 0; }
+  .log-tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    border: 1px solid #2c4339;
+    background: #16201b;
+    padding: 2px 7px;
+    border-radius: 2px;
+    margin-right: 6px;
+  }
+  .chevron {
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    transition: transform 0.15s ease;
+  }
+  .log-entry.open .chevron { transform: rotate(90deg); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px 64px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    border-top: 1px solid var(--hairline);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .focus-visible:focus-visible, a:focus-visible, .log-entry-head:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <!-- populated by JS; duplicated content for seamless loop -->
+  </div>
+</div>
+
+<header>
+  <div class="eyebrow"><span class="dot"></span>SENSOR ONLINE &mdash; SELF-HOSTED DSHIELD DEPLOYMENT</div>
+  <h1>Somewhere on the internet,<br>something is trying <span class="accent">my front door.</span></h1>
+  <p class="subhead">
+    This page tracks unsolicited traffic hitting a Raspberry&nbsp;Pi honeypot on my home
+    network &mdash; a decoy SSH/Telnet/web server that exists purely to be attacked.
+    Numbers below are aggregated counts only; no raw session data or internal
+    network information is exposed here.
+  </p>
+  <div class="meta-row" id="meta-updated">last refreshed &mdash;</div>
+</header>
+
+<div class="stat-strip" id="stat-strip">
+  <div class="stat">
+    <div class="stat-label">Events, 30d</div>
+    <div class="stat-value amber" id="stat-events">&mdash;</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Unique IPs, 30d</div>
+    <div class="stat-value blue" id="stat-ips">&mdash;</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Countries seen</div>
+    <div class="stat-value green" id="stat-countries">&mdash;</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Sensor uptime</div>
+    <div class="stat-value" id="stat-uptime">&mdash;</div>
+  </div>
+</div>
+
+<section id="activity">
+  <div class="section-head">
+    <h2 class="section-title">Activity</h2>
+    <span class="section-note">3-hour buckets, last 7 days</span>
+  </div>
+  <div class="panel-grid">
+    <div class="panel">
+      <div class="panel-title">Events over time</div>
+      <canvas id="timeline-chart"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Top source countries, 30d</div>
+      <div id="country-bars"></div>
+    </div>
+  </div>
+</section>
+
+<section id="ports">
+  <div class="section-head">
+    <h2 class="section-title">Where they knock</h2>
+    <span class="section-note">most-targeted ports, 30d</span>
+  </div>
+  <div class="panel">
+    <div class="port-pill-row" id="port-pills"></div>
+  </div>
+</section>
+
+<section id="observations">
+  <div class="section-head">
+    <h2 class="section-title">Attack observation log</h2>
+    <span class="section-note">written analysis, newest first</span>
+  </div>
+  <div id="log-list">
+    <!-- log entries injected by JS from observations.json -->
+  </div>
+</section>
+
+<footer>
+  <span>Data refreshes nightly from a local SIEM &mdash; no live link to the sensor or home network is exposed by this page.</span>
+  <span>Built on the <a href="https://github.com/bruneaug/DShield-SIEM" target="_blank" rel="noopener">DShield-SIEM</a> stack &middot; reports to <a href="https://isc.sans.edu" target="_blank" rel="noopener">SANS ISC</a></span>
+</footer>
+
+<script>
+// ---------------------------------------------------------------
+// Data loading. Both files are static JSON regenerated by cron/CI,
+// never a live connection to the home network.
+// ---------------------------------------------------------------
+
+async function loadJSON(path) {
+  try {
+    const res = await fetch(path, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    return await res.json();
+  } catch (e) {
+    console.warn("Could not load", path, e);
+    return null;
+  }
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined) return "\u2014";
+  return n.toLocaleString();
+}
+
+function renderStats(d) {
+  if (!d) return;
+  document.getElementById("stat-events").textContent = fmtNum(d.total_events_30d);
+  document.getElementById("stat-ips").textContent = fmtNum(d.unique_ips_30d);
+  document.getElementById("stat-countries").textContent = fmtNum((d.top_countries || []).length);
+  document.getElementById("meta-updated").textContent =
+    "last refreshed " + (d.generated_at ? new Date(d.generated_at).toLocaleString() : "\u2014");
+}
+
+function renderTicker(d) {
+  const track = document.getElementById("ticker-track");
+  if (!d || !d.top_countries || !d.top_countries.length) {
+    track.innerHTML = "<span>awaiting first sync from sensor&hellip;</span>";
+    return;
+  }
+  const items = d.top_countries.map(c =>
+    `<span>source <b>${c.country}</b> &middot; ${fmtNum(c.count)} events</span>`
+  );
+  // duplicate the list so the 50%-width scroll loops seamlessly
+  track.innerHTML = items.join("") + items.join("");
+}
+
+function renderCountryBars(d) {
+  const el = document.getElementById("country-bars");
+  if (!d || !d.top_countries || !d.top_countries.length) {
+    el.innerHTML = '<p style="color:var(--ink-faint); font-family:var(--mono); font-size:13px;">no data yet</p>';
+    return;
+  }
+  const max = Math.max(...d.top_countries.map(c => c.count));
+  el.innerHTML = d.top_countries.slice(0, 8).map(c => `
+    <div class="bar-row">
+      <span class="country">${c.country}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${(c.count / max * 100).toFixed(1)}%"></span></span>
+      <span class="count">${fmtNum(c.count)}</span>
+    </div>
+  `).join("");
+}
+
+function renderPorts(d) {
+  const el = document.getElementById("port-pills");
+  if (!d || !d.top_ports || !d.top_ports.length) {
+    el.innerHTML = '<p style="color:var(--ink-faint); font-family:var(--mono); font-size:13px;">no data yet</p>';
+    return;
+  }
+  el.innerHTML = d.top_ports.map(p =>
+    `<span class="port-pill">:<b>${p.port}</b> &nbsp;${fmtNum(p.count)} hits</span>`
+  ).join("");
+}
+
+function renderTimeline(d) {
+  const canvas = document.getElementById("timeline-chart");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const points = (d && d.activity_timeline_7d) || [];
+  if (!points.length) {
+    ctx.fillStyle = "#5c6773";
+    ctx.font = "13px monospace";
+    ctx.fillText("no data yet", 8, h / 2);
+    return;
+  }
+
+  const counts = points.map(p => p.count);
+  const max = Math.max(...counts, 1);
+  const padL = 4, padR = 4, padT = 10, padB = 4;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const stepX = plotW / (points.length - 1 || 1);
+
+  // baseline grid
+  ctx.strokeStyle = "#2a333d";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padL, h - padB);
+  ctx.lineTo(w - padR, h - padB);
+  ctx.stroke();
+
+  // area fill
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = padL + i * stepX;
+    const y = padT + (1 - p.count / max) * plotH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.lineTo(padL + (points.length - 1) * stepX, h - padB);
+  ctx.lineTo(padL, h - padB);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, padT, 0, h - padB);
+  grad.addColorStop(0, "rgba(232,162,58,0.28)");
+  grad.addColorStop(1, "rgba(232,162,58,0.02)");
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // line
+  ctx.beginPath();
+  points.forEach((p, i) => {
+    const x = padL + i * stepX;
+    const y = padT + (1 - p.count / max) * plotH;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = "#e8a23a";
+  ctx.lineWidth = 1.75;
+  ctx.stroke();
+}
+
+function renderObservations(list) {
+  const wrap = document.getElementById("log-list");
+  if (!list || !list.length) {
+    wrap.innerHTML = '<p style="color:var(--ink-faint); font-family:var(--mono); font-size:13px;">no observations published yet</p>';
+    return;
+  }
+  wrap.innerHTML = list.map((o, i) => `
+    <div class="log-entry" data-idx="${i}">
+      <div class="log-entry-head" role="button" tabindex="0" aria-expanded="false">
+        <span class="log-index">AO-${String(list.length - i).padStart(2, "0")}</span>
+        <span class="log-entry-title">${o.title}</span>
+        <span class="log-entry-date">${o.date}</span>
+        <span class="chevron">&#9656;</span>
+      </div>
+      <div class="log-entry-body">
+        ${(o.tags || []).map(t => `<span class="log-tag">${t}</span>`).join("")}
+        ${o.tags && o.tags.length ? '<div style="height:12px"></div>' : ""}
+        ${o.body.map(p => `<p>${p}</p>`).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  wrap.querySelectorAll(".log-entry-head").forEach(headEl => {
+    const toggle = () => {
+      const entry = headEl.closest(".log-entry");
+      const open = entry.classList.toggle("open");
+      headEl.setAttribute("aria-expanded", open ? "true" : "false");
+    };
+    headEl.addEventListener("click", toggle);
+    headEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+  });
+}
+
+async function init() {
+  const [stats, observations] = await Promise.all([
+    loadJSON("data/honeypot_stats.json"),
+    loadJSON("data/observations.json"),
+  ]);
+
+  renderStats(stats);
+  renderTicker(stats);
+  renderCountryBars(stats);
+  renderPorts(stats);
+  renderTimeline(stats);
+  renderObservations(observations);
+
+  document.getElementById("stat-uptime").textContent =
+    (stats && stats.sensor_uptime) ? stats.sensor_uptime : "active";
+
+  window.addEventListener("resize", () => renderTimeline(stats));
+}
+
+init();
+</script>
+
+</body>
+</html>
